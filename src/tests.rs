@@ -69,3 +69,19 @@ fn test_layout_of_dyn() {
     let val: Box<dyn Display, _> = Box::new_in_buf(&mut mem, value);
     assert_eq!(val.to_string(), "42");
 }
+
+#[test]
+fn test_box_dyn_fn() {
+    let a = 42;
+    let closure = move || a;
+    let b = Box::<dyn Fn() -> i32, [u8; 32]>::new(closure);
+    assert_eq!(b(), 42);
+}
+
+#[test]
+fn test_box_nested_dyn_fn() {
+    let closure = move |d: &dyn Fn(i32) -> String| d(42);
+
+    let b = Box::<dyn Fn(&dyn Fn(i32) -> String) -> String, [u8; 32]>::new(closure);
+    assert_eq!(b(&|a| a.to_string()), "42");
+}
