@@ -6,13 +6,25 @@ use core::{
     alloc::Layout,
     marker::{PhantomData, Unsize},
     ops::{Deref, DerefMut},
-    ptr::{self, drop_in_place, metadata, DynMetadata, NonNull, Pointee},
+    ptr::{self, DynMetadata, NonNull, Pointee},
 };
 
 #[cfg(test)]
 mod tests;
 
-//
+fn meta_offset_layout<T, Value>(value: &Value) -> (DynMetadata<T>, Layout, usize)
+where
+    T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
+    Value: Unsize<T> + ?Sized,
+{
+    // Get dynamic metadata for the given value.
+    let meta = ptr::metadata(value as &T);
+    // Compute memory layout to store the value + its metadata.
+    let meta_layout = Layout::for_value(&meta);
+    let value_layout = Layout::for_value(&value);
+    let (layout, offset) = meta_layout.extend(value_layout).unwrap();
+    (meta, layout, offset)
+}
 
 pub struct Box<T, M>
 where
@@ -32,20 +44,16 @@ where
     where
         Value: Unsize<T>,
     {
-        let meta = metadata(&value as &T);
-
-        let meta_layout = Layout::for_value(&meta);
-        let value_layout = Layout::for_value(&value);
-        let (layout, offset) = meta_layout.extend(value_layout).unwrap();
-        // TODO
+        let (meta, layout, offset) = meta_offset_layout(&value);
+        // Check that the provided buffer has sufficient capacity to store the given value.
         assert!(layout.size() > 0);
         assert!(layout.size() <= mem.as_ref().len());
 
         unsafe {
             let ptr = NonNull::new(mem.as_mut().as_mut_ptr()).unwrap();
-            // TODO
+            // Store dynamic metadata at the beginning of the given memory buffer.
             ptr.cast::<DynMetadata<T>>().as_ptr().write(meta);
-            // TODO
+            // Store the value in the remainder of the memory buffer.
             ptr.cast::<u8>()
                 .as_ptr()
                 .add(offset)
@@ -57,6 +65,15 @@ where
                 phantom: PhantomData,
             }
         }
+    }
+
+    /// Calculates layout describing a record that could be used
+    /// to allocate backing structure for `Value`.
+    pub fn layout_of_dyn<Value>(value: &Value) -> Layout
+    where
+        Value: Unsize<T> + ?Sized,
+    {
+        meta_offset_layout::<T, Value>(value).1
     }
 
     fn meta(&self) -> DynMetadata<T> {
@@ -148,7 +165,7 @@ where
 {
     fn drop(&mut self) {
         unsafe {
-            drop_in_place::<T>(&mut **self);
+            ptr::drop_in_place::<T>(&mut **self);
         }
     }
 }

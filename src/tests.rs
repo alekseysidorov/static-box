@@ -58,3 +58,14 @@ fn test_box_in_provided_memory() {
     let val: Box<dyn Display, _> = Box::new_in_buf(&mut mem, 42);
     assert_eq!(val.to_string(), "42");
 }
+
+#[test]
+fn test_layout_of_dyn() {
+    let value = 42;
+
+    let layout = Box::<dyn Display, &mut [u8]>::layout_of_dyn(&value);
+    let mut mem = vec![0_u8; layout.size()];
+
+    let val: Box<dyn Display, _> = Box::new_in_buf(&mut mem, value);
+    assert_eq!(val.to_string(), "42");
+}
