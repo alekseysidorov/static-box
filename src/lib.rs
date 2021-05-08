@@ -12,6 +12,7 @@ use core::{
 #[cfg(test)]
 mod tests;
 
+#[inline]
 fn meta_offset_layout<T, Value>(value: &Value) -> (DynMetadata<T>, Layout, usize)
 where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
@@ -69,6 +70,7 @@ where
 
     /// Calculates layout describing a record that could be used
     /// to allocate backing structure for `Value`.
+    #[inline]
     pub fn layout_of_dyn<Value>(value: &Value) -> Layout
     where
         Value: Unsize<T> + ?Sized,
@@ -76,16 +78,19 @@ where
         meta_offset_layout::<T, Value>(value).1
     }
 
+    #[inline]
     fn meta(&self) -> DynMetadata<T> {
         unsafe { *self.mem.as_ref().as_ptr().cast() }
     }
 
+    #[inline]
     fn layout_meta(&self) -> (Layout, usize, DynMetadata<T>) {
         let meta = self.meta();
         let (layout, offset) = Layout::for_value(&meta).extend(meta.layout()).unwrap();
         (layout, offset, meta)
     }
 
+    #[inline]
     fn value_ptr(&self) -> *const T {
         let (_, offset, meta) = self.layout_meta();
         unsafe {
@@ -94,6 +99,7 @@ where
         }
     }
 
+    #[inline]
     fn value_mut_ptr(&mut self) -> *mut T {
         let (_, offset, meta) = self.layout_meta();
         unsafe {
@@ -107,6 +113,7 @@ impl<T, const N: usize> Box<T, [u8; N]>
 where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
 {
+    #[inline]
     pub fn new<Value>(value: Value) -> Self
     where
         Value: Unsize<T>,
@@ -121,6 +128,7 @@ where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
     M: AsRef<[u8]> + AsMut<[u8]>,
 {
+    #[inline]
     fn as_ref(&self) -> &T {
         unsafe { &*self.value_ptr() }
     }
@@ -131,6 +139,7 @@ where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
     M: AsRef<[u8]> + AsMut<[u8]>,
 {
+    #[inline]
     fn as_mut(&mut self) -> &mut T {
         unsafe { &mut *self.value_mut_ptr() }
     }
@@ -143,6 +152,7 @@ where
 {
     type Target = T;
 
+    #[inline]
     fn deref(&self) -> &T {
         self.as_ref()
     }
@@ -153,6 +163,7 @@ where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
     M: AsRef<[u8]> + AsMut<[u8]>,
 {
+    #[inline]
     fn deref_mut(&mut self) -> &mut T {
         self.as_mut()
     }
@@ -163,6 +174,7 @@ where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
     M: AsRef<[u8]> + AsMut<[u8]>,
 {
+    #[inline]
     fn drop(&mut self) {
         unsafe {
             ptr::drop_in_place::<T>(&mut **self);
