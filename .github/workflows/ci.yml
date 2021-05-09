@@ -1,0 +1,90 @@
+on: [push]
+
+name: Continuous integration
+
+jobs:
+  fmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          components: rustfmt
+          toolchain: nightly
+          override: true
+      - name: Run rustfmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+      - name: Run check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+      - name: Test debug
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+      - name: Test release
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --release          
+
+  miri:
+    name: Miri
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          components: miri
+          toolchain: nightly
+          override: true
+      - run: cargo install xargo
+      - name: Run miri
+        uses: actions-rs/cargo@v1
+        with:
+          command: miri
+          args: test
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          components: clippy
+          toolchain: nightly
+          override: true
+      - name: Run clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings
