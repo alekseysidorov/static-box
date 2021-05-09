@@ -68,10 +68,10 @@ fn test_box_in_provided_memory() {
 
 #[test]
 fn test_layout_of_dyn() {
-    let value = 42;
+    let value = 42_u64;
 
     let layout = Box::<dyn Display, &mut [u8]>::layout_of_dyn(&value);
-    let mut mem = vec![0_u8; layout.pad_to_align().size()];
+    let mut mem = vec![0_u8; layout.size() + layout.align()];
 
     let val: Box<dyn Display, _> = Box::new_in_buf(&mut mem, value);
     assert_eq!(val.to_string(), "42");
@@ -99,4 +99,14 @@ fn test_box_in_unaligned_memory() {
 
     let val: Box<dyn Display, _> = Box::new_in_buf(&mut mem[3..], 42);
     assert_eq!(val.to_string(), "42");
+}
+
+#[test]
+fn test_box_in_static_mem() {
+    static mut BOX: Option<Box<dyn Display, [u8; 32]>> = None;
+
+    unsafe {
+        BOX.replace(Box::<dyn Display, [u8; 32]>::new(42));
+        assert_eq!(BOX.as_ref().unwrap().to_string(), "42");
+    }
 }
