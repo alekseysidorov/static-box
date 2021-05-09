@@ -22,7 +22,7 @@ where
     let meta = ptr::metadata(value as &T);
     // Compute memory layout to store the value + its metadata.
     let meta_layout = Layout::for_value(&meta);
-    let value_layout = Layout::for_value(&value);
+    let value_layout = Layout::for_value(value);
     let (layout, offset) = meta_layout.extend(value_layout).unwrap();
     (meta, layout, offset)
 }
@@ -32,6 +32,7 @@ where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
     M: AsRef<[u8]> + AsMut<[u8]>,
 {
+    align_offset: usize,
     mem: M,
     phantom: PhantomData<T>,
 }
@@ -41,17 +42,42 @@ where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
     M: AsRef<[u8]> + AsMut<[u8]>,
 {
-    pub fn new_in_buf<Value>(mut mem: M, value: Value) -> Self
+    #[inline(always)]
+    pub fn new_in_buf<Value>(mem: M, value: Value) -> Self
     where
         Value: Unsize<T>,
     {
         let (meta, layout, offset) = meta_offset_layout(&value);
         // Check that the provided buffer has sufficient capacity to store the given value.
         assert!(layout.size() > 0);
-        assert!(layout.size() <= mem.as_ref().len());
+
+        // Construct a box to move the specified memory into the necessary location.
+        // Safety: This code relies on the fact that this method will be inlined.
+        let mut new_box = Self {
+            align_offset: 0,
+            mem,
+            phantom: PhantomData,
+        };
+
+        let raw_ptr = new_box.mem.as_mut().as_mut_ptr();
+        // Compute the offset that needs to be applied to the pointer in order to make
+        // it aligned correctly.
+        new_box.align_offset = raw_ptr.align_offset(layout.align());
+
+        let total_len = new_box.align_offset + layout.size();
+        let buf_len = new_box.mem.as_ref().len();
+        if total_len > buf_len {
+            // At the moment we cannot rely on the regular drop implementation because
+            // the box is in an inconsistent state.
+            core::mem::forget(new_box);
+            panic!(
+                "Not enough memory to store the specified value (got: {}, needed: {})",
+                buf_len, total_len,
+            );
+        }
 
         unsafe {
-            let ptr = NonNull::new(mem.as_mut().as_mut_ptr()).unwrap();
+            let ptr = NonNull::new(raw_ptr.add(new_box.align_offset)).unwrap();
             // Store dynamic metadata at the beginning of the given memory buffer.
             ptr.cast::<DynMetadata<T>>().as_ptr().write(meta);
             // Store the value in the remainder of the memory buffer.
@@ -61,10 +87,7 @@ where
                 .cast::<Value>()
                 .write(value);
 
-            Self {
-                mem,
-                phantom: PhantomData,
-            }
+            new_box
         }
     }
 
@@ -80,7 +103,7 @@ where
 
     #[inline]
     fn meta(&self) -> DynMetadata<T> {
-        unsafe { *self.mem.as_ref().as_ptr().cast() }
+        unsafe { *self.mem.as_ref().as_ptr().add(self.align_offset).cast() }
     }
 
     #[inline]
@@ -92,18 +115,30 @@ where
 
     #[inline]
     fn value_ptr(&self) -> *const T {
-        let (_, offset, meta) = self.layout_meta();
+        let (_, value_offset, meta) = self.layout_meta();
         unsafe {
-            let ptr = self.mem.as_ref().as_ptr().add(offset).cast::<()>();
+            let ptr = self
+                .mem
+                .as_ref()
+                .as_ptr()
+                .add(self.align_offset)
+                .add(value_offset)
+                .cast::<()>();
             ptr::from_raw_parts(ptr, meta)
         }
     }
 
     #[inline]
     fn value_mut_ptr(&mut self) -> *mut T {
-        let (_, offset, meta) = self.layout_meta();
+        let (_, value_offset, meta) = self.layout_meta();
         unsafe {
-            let ptr = self.mem.as_mut().as_mut_ptr().add(offset).cast::<()>();
+            let ptr = self
+                .mem
+                .as_mut()
+                .as_mut_ptr()
+                .add(self.align_offset)
+                .add(value_offset)
+                .cast::<()>();
             ptr::from_raw_parts_mut(ptr, meta)
         }
     }
