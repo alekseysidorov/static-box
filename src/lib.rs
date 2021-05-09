@@ -5,6 +5,7 @@
 use core::{
     alloc::Layout,
     marker::{PhantomData, Unsize},
+    mem::MaybeUninit,
     ops::{Deref, DerefMut},
     ptr::{self, DynMetadata, NonNull, Pointee},
 };
@@ -153,8 +154,8 @@ where
     where
         Value: Unsize<T>,
     {
-        // TODO Investigate if it is possible to safely use an uninitialized memory buffer here.
-        Self::new_in_buf([0_u8; N], value)
+        let mem: MaybeUninit<[u8; N]> = MaybeUninit::uninit();
+        Self::new_in_buf(unsafe { mem.assume_init() }, value)
     }
 }
 
