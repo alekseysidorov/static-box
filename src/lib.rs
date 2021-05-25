@@ -1,28 +1,86 @@
 #![cfg_attr(not(test), no_std)]
-
 #![feature(ptr_metadata)]
 #![feature(unsize)]
 
 //! # Overview
-//! 
-//! TODO
-//! 
+//!
+//! This crate allows saving DST objects in the buffer provided for this.
+//! In this way, users can create global singletons in the `no_std` environments
+//! without allocators.
+//!
+//! Imagine that you want to create a generic embedded logger which can be used for
+//! any board regardless of its hardware details. But you cannot just declare
+//! a static variable that implements some trait because the compiler doesn't know how
+//! many amount of memory should use to allocate it. So, in such cases, you have
+//! to use trait objects to erase the origin type. You might use the
+//! [`alloc::boxed::Box`](https://doc.rust-lang.org/stable/alloc/boxed/struct.Box.html)
+//! to do this thing, but it depends on the global allocator, which you also should provide,
+//! and there are a lot of caveats not to use heap on the embedded devices.
+//!
+//! Instead of using a global allocator, you can use this crate to store dynamic objects
+//! in the static memory.
+//!
 //! # Examples
+//!
+//! ```
+//! use static_box::Box;
 //! 
-//! TODO
+//! struct Uart1Rx {
+//!     // Implementation details...
+//! }
+//! 
+//! # trait SerialWrite {
+//! #    fn write(&mut self, byte: u8);
+//! #    fn write_str(&mut self, _s: &str) {}
+//! # }
+//! #
+//! impl SerialWrite for Uart1Rx {
+//!     fn write(&mut self, _byte: u8) {
+//!         // Implementation details
+//!     }
+//! }
+//!
+//! let rx = Uart1Rx { /* ... */ };
+//! let mut writer = Box::<dyn SerialWrite, [u8; 32]>::new(rx);
+//! writer.write_str("Hello world!");
+//! ```
+//! 
+//! A more complex example demonstrating the usage of an external buffer.
+//! ```
+//! use core::fmt::Display;
+//! use static_box::Box;
+//! 
+//! let value = 42_u64;
+//! 
+//! let mut mem = [0_u8; 64];
+//! // Calculate the amount of memory needed to store this object.
+//! let layout = Box::<dyn Display, &mut [u8]>::layout_of_dyn(&value);
+//! let (head, _tail) = mem.split_at_mut(layout.size() + layout.align());
+//! 
+//! let val: Box<dyn Display, _> = Box::new_in_buf(head, value);
+//! assert_eq!(val.to_string(), "42");
+//! ```
 //!
 //! # Limitations
-//! 
-//! TODO
-//! 
+//!
+//! At the moment this crate can only store dynamic objects, but it's hard to imagine
+//! use cases where there is a need to store sized objects in this box.
+//!
 //! # Minimum Supported `rustc` Version
 //!
-//! This crate's minimum supported `rustc` version is `1.53.0`.
-//! 
-//! TODO
-//! 
+//! This crate uses following unstable features:
+//!
+//! - [`ptr_metadata`](https://doc.rust-lang.org/unstable-book/library-features/ptr-metadata.html)
+//! - [`unsize`](https://doc.rust-lang.org/unstable-book/library-features/unsize.html)
+//!
+//! In other words, the crate's supported nightly `rustc` version is `1.53.0`, but there
+//! is no guarantee that this code will work fine on the newest versions.
+//!
 //! # Implementation details
-//! 
+//!
+//! The implementation is based on th [`thin_box`](https://github.com/rust-lang/rust/blob/5ade3fe32c8a742504aaddcbe0d6e498f8eae11d/library/core/tests/ptr.rs#L561)
+//! example in the rustic tests repository.
+//!
 //! TODO! This crate uses unsafe code!
 
 use core::{
@@ -69,9 +127,9 @@ where
 {
     /// Places a `value` into the specified `mem` buffer. The user should provide enough memory
     /// to store the value with its metadata considering alignment requirements.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// - If the provided buffer is insufficient to store the value.
     #[inline(always)]
     pub fn new_in_buf<Value>(mem: M, value: Value) -> Self

@@ -5,6 +5,24 @@ use std::{
 
 use crate::Box;
 
+struct Uart1Rx;
+
+trait SerialWrite {
+    fn write(&mut self, byte: u8);
+}
+
+impl SerialWrite for Uart1Rx {
+    fn write(&mut self, _byte: u8) {
+        // Implementation details
+    }
+}
+
+#[test]
+fn test_foo() {
+    let mut writer = Box::<dyn SerialWrite, [u8; 32]>::new(Uart1Rx);
+    writer.write(b'a');
+}
+
 #[test]
 fn test_box_trait_object() {
     let four = Box::<dyn Display, [u8; 32]>::new(4);
