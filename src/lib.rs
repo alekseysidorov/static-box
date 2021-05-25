@@ -50,12 +50,16 @@
 //! use core::fmt::Display;
 //! use static_box::Box;
 //!
-//! let value = 42_u64;
-//!
 //! let mut mem = [0_u8; 64];
+//!
+//! let value = 42_u64;
 //! // Calculate the amount of memory needed to store this object.
-//! let layout = Box::<dyn Display, &mut [u8]>::layout_of_dyn(&value);
-//! let (head, _tail) = mem.split_at_mut(layout.size() + layout.align());
+//! let total_len = {
+//!     let layout = Box::<dyn Display, &mut [u8]>::layout_of_dyn(&value);
+//!     let align_offset = mem.as_ptr().align_offset(layout.align());
+//!     layout.size() + align_offset
+//! };
+//! let (head, _tail) = mem.split_at_mut(total_len);
 //!
 //! let val: Box<dyn Display, _> = Box::new_in_buf(head, value);
 //! assert_eq!(val.to_string(), "42");
@@ -79,7 +83,7 @@
 //! # Implementation details
 //!
 //! The implementation is based on th [`thin_box`](https://github.com/rust-lang/rust/blob/5ade3fe32c8a742504aaddcbe0d6e498f8eae11d/library/core/tests/ptr.rs#L561)
-//! example in the rustic tests repository.
+//! example in the rustc tests repository.
 //!
 //! TODO!
 //!
