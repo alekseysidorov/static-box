@@ -24,11 +24,11 @@
 //!
 //! ```
 //! use static_box::Box;
-//! 
+//!
 //! struct Uart1Rx {
 //!     // Implementation details...
 //! }
-//! 
+//!
 //! # trait SerialWrite {
 //! #    fn write(&mut self, byte: u8);
 //! #    fn write_str(&mut self, _s: &str) {}
@@ -44,19 +44,19 @@
 //! let mut writer = Box::<dyn SerialWrite, [u8; 32]>::new(rx);
 //! writer.write_str("Hello world!");
 //! ```
-//! 
+//!
 //! A more complex example demonstrating the usage of an external buffer.
 //! ```
 //! use core::fmt::Display;
 //! use static_box::Box;
-//! 
+//!
 //! let value = 42_u64;
-//! 
+//!
 //! let mut mem = [0_u8; 64];
 //! // Calculate the amount of memory needed to store this object.
 //! let layout = Box::<dyn Display, &mut [u8]>::layout_of_dyn(&value);
 //! let (head, _tail) = mem.split_at_mut(layout.size() + layout.align());
-//! 
+//!
 //! let val: Box<dyn Display, _> = Box::new_in_buf(head, value);
 //! assert_eq!(val.to_string(), "42");
 //! ```
@@ -81,7 +81,9 @@
 //! The implementation is based on th [`thin_box`](https://github.com/rust-lang/rust/blob/5ade3fe32c8a742504aaddcbe0d6e498f8eae11d/library/core/tests/ptr.rs#L561)
 //! example in the rustic tests repository.
 //!
-//! TODO! This crate uses unsafe code!
+//! TODO!
+//!
+//! This crate uses unsafe code!
 
 use core::{
     alloc::Layout,
