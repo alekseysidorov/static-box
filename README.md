@@ -1,3 +1,7 @@
+[![Continuous integration](https://github.com/alekseysidorov/static-box/actions/workflows/ci.yml/badge.svg)](https://github.com/alekseysidorov/static-box/actions/workflows/ci.yml)
+![Crates.io](https://img.shields.io/crates/v/static-box)
+[![API reference](https://docs.rs/static-box/badge.svg)](https://docs.rs/static-box/)
+
 # static-box
 
 ***This crate is in an early development stage. There are no tests, documentation, examples for this crate.***

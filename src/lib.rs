@@ -1,6 +1,29 @@
 #![cfg_attr(not(test), no_std)]
+
 #![feature(ptr_metadata)]
 #![feature(unsize)]
+
+//! # Overview
+//! 
+//! TODO
+//! 
+//! # Examples
+//! 
+//! TODO
+//!
+//! # Limitations
+//! 
+//! TODO
+//! 
+//! # Minimum Supported `rustc` Version
+//!
+//! This crate's minimum supported `rustc` version is `1.53.0`.
+//! 
+//! TODO
+//! 
+//! # Implementation details
+//! 
+//! TODO! This crate uses unsafe code!
 
 use core::{
     alloc::Layout,
@@ -28,6 +51,7 @@ where
     (meta, layout, offset)
 }
 
+/// A box that uses the provided memory to store dynamic objects.
 pub struct Box<T, M>
 where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
@@ -43,14 +67,19 @@ where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
     M: AsRef<[u8]> + AsMut<[u8]>,
 {
+    /// Places a `value` into the specified `mem` buffer. The user should provide enough memory
+    /// to store the value with its metadata considering alignment requirements.
+    /// 
+    /// # Panics
+    /// 
+    /// - If the provided buffer is insufficient to store the value.
     #[inline(always)]
     pub fn new_in_buf<Value>(mem: M, value: Value) -> Self
     where
         Value: Unsize<T>,
     {
         let (meta, layout, offset) = meta_offset_layout(&value);
-        // Check that the provided buffer has sufficient capacity to store the given value.
-        assert!(layout.size() > 0);
+        assert!(layout.size() > 0, "Unsupported value layot");
 
         // Construct a box to move the specified memory into the necessary location.
         // Safety: This code relies on the fact that this method will be inlined.
@@ -67,6 +96,7 @@ where
 
         let total_len = new_box.align_offset + layout.size();
         let buf_len = new_box.mem.as_ref().len();
+        // Check that the provided buffer has sufficient capacity to store the given value.
         if total_len > buf_len {
             // At the moment we cannot rely on the regular drop implementation because
             // the box is in an inconsistent state.
@@ -149,6 +179,7 @@ impl<T, const N: usize> Box<T, [u8; N]>
 where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
 {
+    /// Allocates memory on the stack and then places `value` into it.
     #[inline]
     pub fn new<Value>(value: Value) -> Self
     where
