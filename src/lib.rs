@@ -71,7 +71,7 @@
 //!
 //! # Minimum Supported `rustc` Version
 //!
-//! This crate uses following unstable features:
+//! This crate uses the following unstable features:
 //!
 //! - [`ptr_metadata`](https://doc.rust-lang.org/unstable-book/library-features/ptr-metadata.html)
 //! - [`unsize`](https://doc.rust-lang.org/unstable-book/library-features/unsize.html)
@@ -84,17 +84,17 @@
 //! **This crate uses unsafe code!**
 //!
 //! This crate inspired by the [`thin_box`](https://github.com/rust-lang/rust/blob/5ade3fe32c8a742504aaddcbe0d6e498f8eae11d/library/core/tests/ptr.rs#L561)
-//! example in the rustc tests repository.
+//! example in the `rustc` tests repository.
 //!
 //! This implementation relies on that the type `V` can be coerced into the unsized `dyn T`,
 //! see the [`Unsize`](https://doc.rust-lang.org/core/marker/trait.Unsize.html) trait documentation.
-//! From the coersed `dyn T` it gets pointer to metadata, which contains all the necessary
+//! From the coerced `dyn T` it gets a pointer to metadata, which contains all the necessary
 //! information to manipulate the concrete type stored inside a trait object. After that it copies
 //! metadata and the origin value into the provided buffer.
 //!
 //! Thus, to get the pointer to the `dyn T`, you have to read the metadata given the memory alignment,
 //! use them to calculate the memory layout of the object, and only after that collect this
-//! all into the pointer. So, keep in mind that getting reference to the stored `dyn T` could be too
+//! all into the pointer. So, keep in mind that getting a reference to the stored `dyn T` could be too
 //! expensive in some cases.
 //!
 
