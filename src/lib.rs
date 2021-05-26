@@ -146,7 +146,7 @@ where
         assert!(layout.size() > 0, "Unsupported value layot");
 
         // Construct a box to move the specified memory into the necessary location.
-        // Safety: This code relies on the fact that this method will be inlined.
+        // SAFETY: This code relies on the fact that this method will be inlined.
         let mut new_box = Self {
             align_offset: 0,
             mem,

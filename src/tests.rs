@@ -25,11 +25,20 @@ fn test_box_move() {
         Box::<dyn Display, [u8; 32]>::new(42)
     }
 
+    struct MyStruct {
+        display: Box<dyn Display, [u8; 32]>,
+    }
+
     let b = Box::<dyn Display, [u8; 32]>::new(42);
     move_me(b);
 
     let x = move_from_box();
     assert_eq!(x.to_string(), "42");
+
+    let my_struct = MyStruct {
+        display: x,
+    };
+    assert_eq!(my_struct.display.to_string(), "42");
 }
 
 #[test]
