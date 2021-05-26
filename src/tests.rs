@@ -78,8 +78,7 @@ fn test_layout_of_dyn_vec() {
     let value = 42_u64;
 
     let layout = Box::<dyn Display, &mut [u8]>::layout_of_dyn(&value);
-    dbg!(&layout);
-    let mut mem = vec![0_u8; layout.size()];
+    let mut mem = vec![0_u8; layout.size() + layout.align()];
 
     let val: Box<dyn Display, _> = Box::new_in_buf(&mut mem, value);
     assert_eq!(val.to_string(), "42");
