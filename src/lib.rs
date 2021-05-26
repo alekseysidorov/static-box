@@ -4,16 +4,15 @@
 
 //! # Overview
 //!
-//! This crate allows saving DST objects in the buffer provided for this.
-//! In this way, users can create global singletons in the `no_std` environments
-//! without allocators.
+//! This crate allows saving DST objects in the provided buffer.
+//! In this way, it allows users to create global dynamic objects on a `no_std`
+//! environment without a global allocator.
 //!
 //! Imagine that you want to create a generic embedded logger which can be used for
 //! any board regardless of its hardware details. But you cannot just declare
 //! a static variable that implements some trait because the compiler doesn't know how
-//! many amount of memory should use to allocate it. So, in such cases, you have
-//! to use trait objects to erase the origin type. You might use the
-//! [`alloc::boxed::Box`](https://doc.rust-lang.org/stable/alloc/boxed/struct.Box.html)
+//! much memory should be used to allocate it. In such cases, you have to use trait objects
+//! to erase the origin type. You might use the [`alloc::boxed::Box`](https://doc.rust-lang.org/stable/alloc/boxed/struct.Box.html)
 //! to do this thing, but it depends on the global allocator, which you also should provide,
 //! and there are a lot of caveats not to use heap on the embedded devices.
 //!
@@ -77,17 +76,27 @@
 //! - [`ptr_metadata`](https://doc.rust-lang.org/unstable-book/library-features/ptr-metadata.html)
 //! - [`unsize`](https://doc.rust-lang.org/unstable-book/library-features/unsize.html)
 //!
-//! In other words, the crate's supported nightly `rustc` version is `1.53.0`, but there
+//! In other words, the crate's supported **nightly** `rustc` version is `1.53.0`, but there
 //! is no guarantee that this code will work fine on the newest versions.
 //!
 //! # Implementation details
 //!
-//! The implementation is based on th [`thin_box`](https://github.com/rust-lang/rust/blob/5ade3fe32c8a742504aaddcbe0d6e498f8eae11d/library/core/tests/ptr.rs#L561)
+//! **This crate uses unsafe code!**
+//!
+//! This crate inspired by the [`thin_box`](https://github.com/rust-lang/rust/blob/5ade3fe32c8a742504aaddcbe0d6e498f8eae11d/library/core/tests/ptr.rs#L561)
 //! example in the rustc tests repository.
 //!
-//! TODO!
+//! This implementation relies on that the type `V` can be coerced into the unsized `dyn T`,
+//! see the [`Unsize`](https://doc.rust-lang.org/core/marker/trait.Unsize.html) trait documentation.
+//! From the `dyn T` this implementation gets pointer to metadata, which contains all the necessary
+//! information to manipulate the concrete type stored inside a trait object. After that it copies
+//! metadata and the origin value into the provided buffer.
 //!
-//! This crate uses unsafe code!
+//! Thus, to get the pointer to the `dyn T`, you have to read the metadata given the memory alignment,
+//! use them to calculate the memory layout of the object, and only after that collect this
+//! all into the pointer. So, keep in mind that getting reference to the stored `dyn T`
+//! can be expensive in some cases.
+//!
 
 use core::{
     alloc::Layout,

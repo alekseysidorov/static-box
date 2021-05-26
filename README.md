@@ -2,13 +2,38 @@
 ![Crates.io](https://img.shields.io/crates/v/static-box)
 [![API reference](https://docs.rs/static-box/badge.svg)](https://docs.rs/static-box/)
 
-# static-box
+# Overview
 
-***This crate is in an early development stage. There are no tests, documentation, examples for this crate.***
+This crate allows saving DST objects in the provided buffer. In this way, it allows users to create global dynamic objects on a `no_std` environment without a global allocator.
 
-To deal with trait objects, this crate uses a lot of nightly features.
+```rust
+use static_box::Box;
 
-This code has been inspired by the [`thin_box`](https://github.com/rust-lang/rust/blob/5ade3fe32c8a742504aaddcbe0d6e498f8eae11d/library/core/tests/ptr.rs#L561) example in the rustic tests repository.
+struct Uart1Rx {
+    // Implementation details...
+}
+
+impl SerialWrite for Uart1Rx {
+    fn write(&mut self, _byte: u8) {
+        // Implementation details
+    }
+}
+let rx = Uart1Rx { /* ... */ };
+
+let mut writer = Box::<dyn SerialWrite, [u8; 32]>::new(rx);
+writer.write_str("Hello world!");
+```
+
+This code has been inspired by the [`thin_box`](https://github.com/rust-lang/rust/blob/5ade3fe32c8a742504aaddcbe0d6e498f8eae11d/library/core/tests/ptr.rs#L561) example in the rustc tests repository.
+
+# Minimum Supported `rustc` Version
+
+This crate uses following unstable features:
+- [`ptr_metadata`](https://doc.rust-lang.org/unstable-book/library-features/ptr-metadata.html)
+- [`unsize`](https://doc.rust-lang.org/unstable-book/library-features/unsize.html)
+
+In other words, the crate's supported **nightly** `rustc` version is `1.53.0`, but there
+is no guarantee that this code will work fine on the newest versions.
 
 # License
 
