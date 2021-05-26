@@ -94,8 +94,8 @@
 //!
 //! Thus, to get the pointer to the `dyn T`, you have to read the metadata given the memory alignment,
 //! use them to calculate the memory layout of the object, and only after that collect this
-//! all into the pointer. So, keep in mind that getting reference to the stored `dyn T`
-//! can be expensive in some cases.
+//! all into the pointer. So, keep in mind that getting reference to the stored `dyn T` could be too
+//! expensive in some cases.
 //!
 
 use core::{
