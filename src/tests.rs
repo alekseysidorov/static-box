@@ -35,9 +35,7 @@ fn test_box_move() {
     let x = move_from_box();
     assert_eq!(x.to_string(), "42");
 
-    let my_struct = MyStruct {
-        display: x,
-    };
+    let my_struct = MyStruct { display: x };
     assert_eq!(my_struct.display.to_string(), "42");
 }
 
