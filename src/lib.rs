@@ -88,7 +88,7 @@
 //!
 //! This implementation relies on that the type `V` can be coerced into the unsized `dyn T`,
 //! see the [`Unsize`](https://doc.rust-lang.org/core/marker/trait.Unsize.html) trait documentation.
-//! From the `dyn T` this implementation gets pointer to metadata, which contains all the necessary
+//! From the coersed `dyn T` it gets pointer to metadata, which contains all the necessary
 //! information to manipulate the concrete type stored inside a trait object. After that it copies
 //! metadata and the origin value into the provided buffer.
 //!
