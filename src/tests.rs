@@ -25,11 +25,18 @@ fn test_box_move() {
         Box::<dyn Display, [u8; 32]>::new(42)
     }
 
+    struct MyStruct {
+        display: Box<dyn Display, [u8; 32]>,
+    }
+
     let b = Box::<dyn Display, [u8; 32]>::new(42);
     move_me(b);
 
     let x = move_from_box();
     assert_eq!(x.to_string(), "42");
+
+    let my_struct = MyStruct { display: x };
+    assert_eq!(my_struct.display.to_string(), "42");
 }
 
 #[test]
@@ -67,13 +74,30 @@ fn test_box_in_provided_memory() {
 }
 
 #[test]
-fn test_layout_of_dyn() {
+fn test_layout_of_dyn_vec() {
     let value = 42_u64;
 
     let layout = Box::<dyn Display, &mut [u8]>::layout_of_dyn(&value);
     let mut mem = vec![0_u8; layout.size() + layout.align()];
 
     let val: Box<dyn Display, _> = Box::new_in_buf(&mut mem, value);
+    assert_eq!(val.to_string(), "42");
+}
+
+#[test]
+fn test_layout_of_dyn_split_at_mut() {
+    let mut mem = [0_u8; 64];
+
+    let value = 42_u64;
+
+    let total_len = {
+        let layout = Box::<dyn Display, &mut [u8]>::layout_of_dyn(&value);
+        let align_offset = mem.as_ptr().align_offset(layout.align());
+        layout.size() + align_offset
+    };
+    let (head, _tail) = mem.split_at_mut(total_len);
+
+    let val: Box<dyn Display, _> = Box::new_in_buf(head, value);
     assert_eq!(val.to_string(), "42");
 }
 
