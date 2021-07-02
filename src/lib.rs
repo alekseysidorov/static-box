@@ -1,6 +1,8 @@
 #![cfg_attr(not(test), no_std)]
 #![feature(ptr_metadata)]
 #![feature(unsize)]
+#![feature(const_pin)]
+// #![deny(missing_docs)]
 
 //! # Overview
 //!
@@ -40,7 +42,8 @@
 //! }
 //!
 //! let rx = Uart1Rx { /* ... */ };
-//! let mut writer = Box::<dyn SerialWrite, [u8; 32]>::new(rx);
+//! let mut mem = [0_u8; 32];
+//! let mut writer = Box::<dyn SerialWrite>::new(&mut mem, rx);
 //! writer.write_str("Hello world!");
 //! ```
 //!
@@ -54,13 +57,13 @@
 //! let value = 42_u64;
 //! // Calculate the amount of memory needed to store this object.
 //! let total_len = {
-//!     let layout = Box::<dyn Display, &mut [u8]>::layout_of_dyn(&value);
+//!     let layout = Box::<dyn Display>::layout_of_dyn(&value);
 //!     let align_offset = mem.as_ptr().align_offset(layout.align());
 //!     layout.size() + align_offset
 //! };
 //! let (head, _tail) = mem.split_at_mut(total_len);
 //!
-//! let val: Box<dyn Display, _> = Box::new_in_buf(head, value);
+//! let val: Box<dyn Display> = Box::new(head, value);
 //! assert_eq!(val.to_string(), "42");
 //! ```
 //!
@@ -101,7 +104,6 @@
 use core::{
     alloc::Layout,
     marker::{PhantomData, Unsize},
-    mem::MaybeUninit,
     ops::{Deref, DerefMut},
     ptr::{self, DynMetadata, NonNull, Pointee},
 };
@@ -125,20 +127,18 @@ where
 }
 
 /// A box that uses the provided memory to store dynamic objects.
-pub struct Box<T, M>
+pub struct Box<'m, T>
 where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
-    M: AsRef<[u8]> + AsMut<[u8]>,
 {
     align_offset: usize,
-    mem: M,
+    mem: &'m mut [u8],
     phantom: PhantomData<T>,
 }
 
-impl<T, M> Box<T, M>
+impl<'m, T> Box<'m, T>
 where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
-    M: AsRef<[u8]> + AsMut<[u8]>,
 {
     /// Places a `value` into the specified `mem` buffer. The user should provide enough memory
     /// to store the value with its metadata considering alignment requirements.
@@ -146,8 +146,7 @@ where
     /// # Panics
     ///
     /// - If the provided buffer is insufficient to store the value.
-    #[inline(always)]
-    pub fn new_in_buf<Value>(mem: M, value: Value) -> Self
+    pub fn new<Value>(mem: &'m mut [u8], value: Value) -> Self
     where
         Value: Unsize<T>,
     {
@@ -248,25 +247,9 @@ where
     }
 }
 
-impl<T, const N: usize> Box<T, [u8; N]>
+impl<'m, T> AsRef<T> for Box<'m, T>
 where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
-{
-    /// Allocates memory on the stack and then places `value` into it.
-    #[inline]
-    pub fn new<Value>(value: Value) -> Self
-    where
-        Value: Unsize<T>,
-    {
-        let mem: MaybeUninit<[u8; N]> = MaybeUninit::uninit();
-        Self::new_in_buf(unsafe { mem.assume_init() }, value)
-    }
-}
-
-impl<T, M> AsRef<T> for Box<T, M>
-where
-    T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
-    M: AsRef<[u8]> + AsMut<[u8]>,
 {
     #[inline]
     fn as_ref(&self) -> &T {
@@ -274,10 +257,9 @@ where
     }
 }
 
-impl<T, M> AsMut<T> for Box<T, M>
+impl<'m, T> AsMut<T> for Box<'m, T>
 where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
-    M: AsRef<[u8]> + AsMut<[u8]>,
 {
     #[inline]
     fn as_mut(&mut self) -> &mut T {
@@ -285,10 +267,9 @@ where
     }
 }
 
-impl<T, M> Deref for Box<T, M>
+impl<'m, T> Deref for Box<'m, T>
 where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
-    M: AsRef<[u8]> + AsMut<[u8]>,
 {
     type Target = T;
 
@@ -298,10 +279,9 @@ where
     }
 }
 
-impl<T, M> DerefMut for Box<T, M>
+impl<'m, T> DerefMut for Box<'m, T>
 where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
-    M: AsRef<[u8]> + AsMut<[u8]>,
 {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
@@ -309,10 +289,9 @@ where
     }
 }
 
-impl<T, M> Drop for Box<T, M>
+impl<'m, T> Drop for Box<'m, T>
 where
     T: ?Sized + Pointee<Metadata = DynMetadata<T>>,
-    M: AsRef<[u8]> + AsMut<[u8]>,
 {
     #[inline]
     fn drop(&mut self) {
