@@ -20,7 +20,8 @@ impl SerialWrite for Uart1Rx {
 }
 let rx = Uart1Rx { /* ... */ };
 
-let mut writer = Box::<dyn SerialWrite, [u8; 32]>::new(rx);
+let mut buf = [0; 32];
+let mut writer = Box::<dyn SerialWrite>::new(&mut buf, rx);
 writer.write_str("Hello world!");
 ```
 
